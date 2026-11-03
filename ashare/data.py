@@ -24,21 +24,63 @@ def _frame(result):
     return pd.DataFrame(rows,columns=result.fields)
 
 
+def _close_connection():
+    # The SDK keeps a module-global socket even after failed login.
+    from baostock.common import context
+    connection=getattr(context,'default_socket',None)
+    if connection is not None:
+        try:
+            connection.close()
+        except OSError:
+            pass
+        context.default_socket=None
+
+
 @contextmanager
-def session():
+def session(login_timeouts=(20,60), query_timeout=30):
+    """Retry network login failure once with a fresh socket and longer deadline.
+
+    No retries for authentication errors or exceptions raised by the caller's
+    query; successful but empty responses are not treated as connection failures.
+    """
     import baostock as bs
+    if not 1<=len(login_timeouts)<=3 or any(not 0<t<=120 for t in login_timeouts) or not 0<query_timeout<=120:
+        raise ValueError('Invalid connection deadlines')
     previous=socket.getdefaulttimeout()
-    socket.setdefaulttimeout(20)
     connected=False
+    last_error='unknown connection error'
     try:
-        login=bs.login()
-        if login.error_code != '0':
-            raise RuntimeError('BaoStock login failed. Requires provider TCP access; retry in Colab, never substitute demo data.')
-        connected=True
+        for attempt,timeout in enumerate(login_timeouts,1):
+            _close_connection()
+            socket.setdefaulttimeout(timeout)
+            print(f'BaoStock login {attempt}/{len(login_timeouts)}; socket timeout={timeout}s',flush=True)
+            try:
+                login=bs.login()
+                if login.error_code=='0':
+                    connected=True
+                    break
+                last_error=f'{login.error_code}: {login.error_msg}'
+                # BaoStock reserves 100020xx for network/transport failures.
+                if not str(login.error_code).startswith('100020'):
+                    break
+            except OSError as exc:
+                last_error=f'{type(exc).__name__}: {exc}'
+        if not connected:
+            raise RuntimeError(
+                f'BaoStock login failed ({last_error}). '
+                'Run `from ashare.connection import diagnose_baostock; print(diagnose_baostock())` '
+                'in Colab to separate TCP, login and query failures. '
+                'A timeout alone does not prove missing TCP permission. No demo fallback was used.')
+        socket.setdefaulttimeout(query_timeout)
+        # setdefaulttimeout only affects new sockets; update the connected SDK socket too.
+        from baostock.common import context
+        connection=getattr(context,'default_socket',None)
+        if connection is not None:
+            connection.settimeout(query_timeout)
         yield bs
     finally:
-        if connected:
-            bs.logout()
+        # Close directly: an SDK logout request could itself block or mask a query exception.
+        _close_connection()
         socket.setdefaulttimeout(previous)
 
 
