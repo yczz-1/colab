@@ -1,0 +1,6 @@
+.vendor/
+__pycache__/
+.ipynb_checkpoints/
+data/
+outputs/
+.venv/
