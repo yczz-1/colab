@@ -2,6 +2,10 @@
 
 本金默认20,000元，免费数据，目标是稳健多因子研究。**这是第一版研究工具，不是已经验证盈利或可以直接实盘的策略。**
 
+## Colab连接超时时：Mac下载、Colab离线导入
+
+本机是Mac可使用 [LOCAL_DATA.md](LOCAL_DATA.md)：下载最新版代码包，解压后在终端进入ashare_weekly目录，运行 `bash mac_download.sh`。先验证30只真实股票的下载；完成后在最新版Notebook设 `MODE='bundle'`，上传生成的 `market_sample_*.zip`。本机连接能否成功仍需验证，离线导入不会改善原数据源的历史偏差。
+
 ## 在 Colab 上运行
 
 1. 把 `A股周频多因子.ipynb` 上传至 Google Colab。

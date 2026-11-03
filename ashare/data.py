@@ -124,6 +124,7 @@ def load_free(start='2018-01-01', end=None, cache_dir='data/baostock', max_symbo
         frames=[]; reports=[]
         for i,row in enumerate(universe.itertuples(),1):
             code=row.code
+            print(f'Downloading / reading cache {i}/{len(universe)}: {code}',flush=True)
             raw=cached(root/code/'raw.csv',lambda:_frame(bs.query_history_k_data_plus(code,bfields,start_date=start,end_date=end,frequency='d',adjustflag='3')))
             adj=cached(root/code/'adj.csv',lambda:_frame(bs.query_history_k_data_plus(code,'date,code,close',start_date=start,end_date=end,frequency='d',adjustflag='2')))
             if not raw.empty:
