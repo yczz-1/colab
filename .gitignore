@@ -6,3 +6,5 @@ outputs/
 .venv/
 .venv-local/
 market_*.zip
+
+https_probe.json
